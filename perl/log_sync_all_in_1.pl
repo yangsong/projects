@@ -1,22 +1,33 @@
 #!/usr/bin/perl
+
+#è°ƒè¯•å¼€å…³
+#9 æ‰€æœ‰ä¿¡æ¯
+#8 Dumpperè°ƒè¯•ä¿¡æ¯
+#7 æ•°æ®åº“ä¿¡æ¯
+#6 æ•°ç»„è°ƒè¯•ä¿¡æ¯
+#5 æ–‡ä»¶å¥æŸ„
+$debug = 6;
+
 #===========================================================================
-#°ëĞ¡Ê±Í³¼Æ
-# 1£º°ëĞ¡Ê±ÈÕÖ¾ÌáÈ¡ 2£ºÀËÊ×°ëĞ¡Ê±Í³¼Æ 3£ºÈÎÎñ°ëĞ¡Ê±Í³¼Æ 4£ºÆµµÀÊ×Ò³°ëĞ¡Ê±
+#åŠå°æ—¶ç»Ÿè®¡
+# 1ï¼šåŠå°æ—¶æ—¥å¿—æå– 2ï¼šæµªé¦–åŠå°æ—¶ç»Ÿè®¡ 3ï¼šä»»åŠ¡åŠå°æ—¶ç»Ÿè®¡ 4ï¼šé¢‘é“é¦–é¡µåŠå°æ—¶
 #===========================================================================
-BEGIN { push @INC, qw(/data1/sinastat/code/run/rss/) }
-BEGIN { push @INC, qw(/data1/sinastat/code/run/lib/) }
+
+
+
+BEGIN { push @INC, qw(/opt/test/fengtai2/rss/ /data1/sinastat/code/run/rss/) }
+BEGIN { push @INC, qw(/opt/test/fengtai2/lib/ /data1/sinastat/code/run/lib/) }
 $HALF_HOUR_YEAR=$ARGV[0];
 $HALF_HOUR_MON=$ARGV[1];
 $HALF_HOUR_DAY=$ARGV[2];
 $HALF_HOUR_HOUR=$ARGV[3];
 $PROGRAM=__FILE__;
+
 use Data::Dumper();
 use Text::Iconv;
 Text::Iconv->raise_error(0);
-#require ('timelib.pl');
-require ('/data1/sinastat/code/conf/gateway.conf');
-#by debao 2005-07-13 11:42
-#my $RSYNC="/usr/bin/rsync -a ";
+
+require ('/opt/test/fengtai2/config/gateway.conf');
 my $RSYNC="/usr/bin/rsync  --timeout=60 -az ";
 $WAPDIR = "/data1/sinastat";
 my $source='cp';
@@ -25,6 +36,7 @@ my $source='cp';
 %SUB_ISDN=();
 
 my $oldh = select(STDOUT);
+# é˜²æ­¢è‡ªåŠ¨flushçš„è®¾ç½®
 $| = 1;
 select($oldh);
 
@@ -47,6 +59,7 @@ require ('global.pl');
 my $begintime=getTimeInS();
 message ("PROGRAM log_sync.pl BEGIN ====================");
 
+
 print "$start_hour,$day_start,$mon_start,$year_start\n";
 require ('logfile.conf');
 require ('shortdomain.pl');
@@ -56,1275 +69,440 @@ my $begintime=getToday('yyyy-mm-dd hh:mm:ss');
 
 my %CONFIG_LOGFILE = ();
 my %RSYNC_CONFIG_LOGFILE = ();
+my @CHANNEL_LISTS = ();
 
-#¶ÁÅäÖÃÊı¾İ¿â
+$SINA_PERL_BASE="/usr/local/sinawap/perl/bin/perl";
+%SINA_PERL_TOPS_SCRIPTS = ("wapcms" => "/opt/test/fengtai2/rss/news_rank.pl", "book.prog.3g.sina.com.cn" => "/opt/test/fengtai2/rss/book_rank.pl");
+%SINA_PERL_TOPS_TMPS = ("wapcms" => "/tmp/news_rank.log", "book.prog.3g.sina.com.cn" => "book_rank.log");
+
+#è¯»é…ç½®æ•°æ®åº“
 {
-	my $date = $GDATE . $hour_start . $min_start;
-	my $LOG_PATH = '/data1/sinastat/var/isdn/TIME/';
-	my $TEMP_PATH = '/data1/sinastat/var/isdn/TEMP/';
-	my $db_PROG = new db('PROG_SLAVE');
-	my $conn_PROG = $db_PROG->{'conn'}; #Ñ°ÕÒÊôĞÔ
-	my ($stmt,$sql);
-	$sql = "select channel,path,ip,date from rsync_isdn_status where date = '$date' and length(date)=12 and att = 2 and flag = 1";
-	$stmt=$conn_PROG->prepare($sql);
-	$stmt->execute();
-	while (my ($channel,$path,$ip,$date)=$stmt->fetchrow_array)	
-	{
-			$path = $LOG_PATH . $path;
-#			print "$channel,$path,$ip,$date\n";
-			$CONFIG_LOGFILE{$channel}{'hourFiles'}{$ip}=$path;
-	}
-	foreach my $channel (keys %LOGFILE_CONFIG_COOKIE)
-	{
-		next if(! defined($LOGFILE_CONFIG_COOKIE{$channel}{'halfhourFiles'}));
-		next if(! defined($LOGFILE_CONFIG_COOKIE{$channel}{'halfremoteFiles'}));
-		foreach my $ip (keys %{$LOGFILE_CONFIG_COOKIE{$channel}{'halfhourFiles'}})
-		{
-			my $path = $LOGFILE_CONFIG_COOKIE{$channel}{'halfhourFiles'}{$ip};
-			$CONFIG_LOGFILE{$channel}{'hourFiles'}{$ip}=$path;
-			$RSYNC_CONFIG_LOGFILE{$channel}{'hourFiles'}{$ip}=$path;
-		}
-		foreach my $ip (keys %{$LOGFILE_CONFIG_COOKIE{$channel}{'halfremoteFiles'}})
-		{
-			my $path = $LOGFILE_CONFIG_COOKIE{$channel}{'halfremoteFiles'}{$ip};
-			$RSYNC_CONFIG_LOGFILE{$channel}{'remoteFiles'}{$ip}=$path;
-		}
-	}
-		print Dumper(\%CONFIG_LOGFILE);
-		print Dumper(\%RSYNC_CONFIG_LOGFILE);
+    my $date = $GDATE . $hour_start . $min_start;
+    my $LOG_PATH = '/opt/test/';
+    my $TEMP_PATH = '/opt/test/tmp/';
+    my $db_PROG = new db('PROG_SLAVE');
+    my $conn_PROG = $db_PROG->{'conn'}; #å¯»æ‰¾å±æ€§
+    my ($stmt,$sql);
+    # for debug:
+    $date = '201010250500';
+    $sql = "select channel,path,ip,date from rsync_isdn_status where date = '$date' and length(date)=12 and att = 2 and flag = 1";
+    $stmt=$conn_PROG->prepare($sql);
+    $stmt->execute();
+    while (my ($channel,$path,$ip,$date)=$stmt->fetchrow_array)	
+    {
+        push @CHANNEL_LISTS, $channel;
+        $path = $LOG_PATH . $path;
+        if($debug > 6){
+            print "$channel,$path,$ip,$date\n";
+        }
+        $CONFIG_LOGFILE{$channel}{'hourFiles'}{$ip}=$path;
+    }
+
+    @CHANNEL_LISTS = keys  %LOGFILE_CONFIG_COOKIE;
+
+    message("æ•°æ®åº“æ‰§è¡Œå®Œæ¯•");
+    foreach my $channel (keys %LOGFILE_CONFIG_COOKIE)
+    {
+        next if(! defined($LOGFILE_CONFIG_COOKIE{$channel}{'halfhourFiles'}));
+        next if(! defined($LOGFILE_CONFIG_COOKIE{$channel}{'halfremoteFiles'}));
+        foreach my $ip (keys %{$LOGFILE_CONFIG_COOKIE{$channel}{'halfhourFiles'}})
+        {
+            my $path = $LOGFILE_CONFIG_COOKIE{$channel}{'halfhourFiles'}{$ip};
+            $CONFIG_LOGFILE{$channel}{'hourFiles'}{$ip}=$path;
+            $RSYNC_CONFIG_LOGFILE{$channel}{'hourFiles'}{$ip}=$path;
+        }
+        foreach my $ip (keys %{$LOGFILE_CONFIG_COOKIE{$channel}{'halfremoteFiles'}})
+        {
+            my $path = $LOGFILE_CONFIG_COOKIE{$channel}{'halfremoteFiles'}{$ip};
+            $RSYNC_CONFIG_LOGFILE{$channel}{'remoteFiles'}{$ip}=$path;
+        }
+    }
+    # è¿ç®—é€»è¾‘ï¼Œä¹‹æ‰€ä»¥åˆ†å¼€ï¼Œæ˜¯ä¸ºäº†ä¸­é—´å¯ä»¥è¿›è¡Œä¸€ä¸‹sync
+#    rsyncLog();
+    router();
+    if($debug > 7){
+        print Dumper(\%CONFIG_LOGFILE);
+        print Dumper(\%RSYNC_CONFIG_LOGFILE);
+    }
 
 }
 
+# æµ‹è¯•æœŸé—´ï¼Œä¸å¼€sync
+#message("è·å–æ—¥å¿—");
+#rsyncLog() if($HALF_HOUR_HOUR eq '');#å¸¦å‚æ•°é‡è·‘æ—¶ä¸é‡æ–°å–æ—¥å¿—
+#rsyncLog();#å¸¦å‚æ•°é‡è·‘æ—¶ä¸é‡æ–°å–æ—¥å¿—
 
-message("»ñÈ¡ÈÕÖ¾");
-#rsyncLog() if($HALF_HOUR_HOUR eq '');#´ø²ÎÊıÖØÅÜÊ±²»ÖØĞÂÈ¡ÈÕÖ¾
-rsyncLog();#´ø²ÎÊıÖØÅÜÊ±²»ÖØĞÂÈ¡ÈÕÖ¾
+=pod
+æ§åˆ¶å™¨
+=cut
+sub router{
+    foreach my $channel (keys %LOGFILE_CONFIG_COOKIE){
+        single_channel($channel);
+    }
+}
 
 
+=pod 
+å¤„ç†å•ä¸ªåŸŸå
+=cut
+sub single_channel{
+    # æ²¡æœ‰ä¼ é€’é¢‘é“å‚æ•°çš„ï¼Œç›´æ¥è¿”å›
+    if(@_ < 1){
+        return 0;
+    }
+    my ($channel_name) = @_;
+    my %rank_array = ("wapcms"  => 1, "book.prog.3g.sina.com.cn" => 1);
+    #1. è¯»å–æ–‡ä»¶
+    read_single_channel($channel_name);
+    if(exists($rank_array{$channel_name})){
+        # å°†éœ€è¦çš„æ’è¡Œæ¦œè¿ç®—å‡ºæ¥
+        create_domain_ranks($SINA_PERL_TOPS_SCRIPTS{$channel_name}, $channel_name, $SINA_PERL_TOPS_TMPS{$channel_name});
+    }
+    create_sub_isdn($channel_name);
+    #2. è¿›è¡Œå­è¿ç®—
+}
+
+message("åˆ›å»ºæ’è¡Œæ¦œæ—¥å¿—");
+sub create_domain_ranks{
+    my($script_name, $domain_name, $log_file);
+    ($script_name, $domain_name, $log_file) = @_;
+    print "PARAM:" . $script_name . $domain_name . $log_file;
+    if(!$script_name || !$domain_name || !$log_file){
+        0;
+    }
+    my $file = "/tmp/${domain_name}_${HALF_HOUR_YEAR}_${HALF_HOUR_MON}_${HALF_HOUR_DAY}_${HALF_HOUR_HOUR}";
+    open(F,"+>$file") or warn $!;   
+    foreach my $line (@{$ALL_ISDN{$domain_name}})
+    {
+        print F "@$line\n"; 
+    }
+    close(F) or warn $!;sleep 1;
+    my $perl_cmd = "${PERL_BASE} ${script_name} ${domain_name}  ${HALF_HOUR_YEAR} ${HALF_HOUR_MON} ${HALF_HOUR_DAY} ${HALF_HOUR_HOUR} >> ${log_file} 2>&1 &";
+    if($debug > 5){
+        print "PERL CMD:" . $perl_cmd . "\n";
+    }
+    system("${SINA_PERL_BASE} ${script_name} ${domain_name}  ${HALF_HOUR_YEAR} ${HALF_HOUR_MON} ${HALF_HOUR_DAY} ${HALF_HOUR_HOUR} >> ${log_file} 2>&1 &");
+}
+
+sub read_single_channel{
+    if(@_ < 1){
+        return 0;
+    }
+    my ($domain_name) = @_;
+    my $hourFiles_ref=$CONFIG_LOGFILE{$domain_name}{'hourFiles'};
+    my @line=();
+    foreach my $hourFile (values %$hourFiles_ref)
+    {
+        if(-e $hourFile)
+        {
+            if($debug > 5){
+                print "Now Open HOUR FILE:" . $hourFile;
+            }
+            open FILE , "<$hourFile" ;
+            my %subdomains = map qw(wapcms dpool book_pibao_3g_sina_com_cn nba.prog.3g.sina.com.cn nba2.prog.3g.sina.com.cn sinatv.sina.com.cn book.prog.3g.sina.com.cn stock.prog.sina.com.cn);
+            $pubsysb = 0;
+            if(exists($subdomains{$LOGFILE_CONFIG_COOKIE{$domain_name}{'pubsys'}})){
+                $pubsys = 1;
+            }
+            while(<FILE>){
+                my ($time,$mobile,$request,$ua,$ip)={};
+                if($pubsys eq 1){
+                    ($time,$mobile,$request,$ua,$ip) = parseIsdnCookie($_);
+                }else{
+                    ($time,$mobile,$request,$ua,$ip) = parseIsdn($_)
+                }
+                $ip =~ s/[\[\]]//g;
+                $request =~ s/\s//g;
+                if($GATEWAY{$ip}==1)
+                {
+                    push @line,[$request,$mobile];        
+                }
+            }
+            close FILE;
+        }
+        else
+        {
+            print "$HALF_HOUR_DAY $HALF_HOUR_HOUR cannot find $hourFile\n";
+            my $cmd = "echo '$HALF_HOUR_DAY $HALF_HOUR_HOUR cannot find $hourFile' >> /tmp/index_err ";
+            system($cmd);
+        }
+    }
+    $ALL_ISDN{$domain_name}=\@line;
+}
 
 
-message("¹ıÂËÍø¹Ü¶ÁÈ¡ÈÕÖ¾");
-#²ıÆ½F5ip¶¼ÏÈÈÏÎªºÏ·¨
+=pod
+åŒæ­¥è¿œç¨‹æ–‡ä»¶
+=cut
+sub rsyncLog()
+{
+    foreach my $domain_name (keys %RSYNC_CONFIG_LOGFILE)
+    {
+        my $remoteFiles_ref = $RSYNC_CONFIG_LOGFILE{$domain_name}{'remoteFiles'};
+
+        my $hourFiles_ref=$RSYNC_CONFIG_LOGFILE{$domain_name}{'hourFiles'};
+        foreach my $host (keys %$remoteFiles_ref)
+        {
+            my $localfile = $$hourFiles_ref{$host};
+            my $remotefile = $host . $$remoteFiles_ref{$host};
+            $localfile =~ m/^(.*)\/[^\/]+$/;
+            my $localdir = $1;
+            my $cmd_mkdir = "mkdir -p $localdir";
+
+            print "åˆ›å»ºç›®å½•|".$cmd_mkdir  ."|\n";
+            system("$cmd_mkdir")==0 
+                or warning("åˆ›å»ºç›®å½•å‡ºé”™ æ—¥å¿—ç±»å‹:$domain_name  $!");
+
+            my $cmd="$RSYNC $remotefile $localfile";
+            print "åŒæ­¥æ—¥å¿—|".$cmd  ."|\n";
+            system("$cmd")==0 
+                or warning("åŒæ­¥æ—¥å¿—å‡ºé”™ æ—¥å¿—ç±»å‹:$domain_name  $!");
+            my $size = (stat($localfile)) [7];
+            if($size > 419430400) {sendSMS_new("ft ${domain_name}${host}æ—¥å¿—å¤§äº400M");}
+
+        }
+    }
+}
+
+message("ç²¾ç®€æ—¥å¿—");
+sub create_sub_isdn{
+    my ($domain_name) = @_
+    if(!$domain_name){
+        return 0;
+    }
+    foreach my $r_arr_p (@{$ALL_ISDN{$domain_name}})
+    {
+        my @r_arr = @$r_arr_p;
+        my $r = $r_arr[0];
+        if($r =~ m/[\?&]pos\=/)
+        {
+            $r =~s/\s//g;
+            $r =~s/[\?&]vt=[^&]*//g;
+            $r =~s/[\?&]et=[^&]*//g;
+            $r =~s/[\?&]mode=[^&]*//g;
+            $r =~s/[\?&]gsid=[^&]*//g;
+            $r =~s/[\?&]from=gd[^&]*//g;
+            $r =~s/[\?&]wm=[^&]*//g;
+
+            $r =~s/pos=text_old/pos=6/;
+
+            $r =~s/[\?&]MISC_ID=[^&]*//g;
+            $r =~s/&MISC_SessionID=[^&]*//g;
+            $r =~s/&MISC_AccessMode=[^&]*//g;
+            $r =~s/&MISC_ServiceID=[^&]*//g;
+            $r =~s/&PHPSESSID=[^&]*//g;
+            $r =~s/\/&/\/\?/g;
+            $r = $LONG_DOMAIN_TO_SHORT{$domain_name}.$r if(defined $LONG_DOMAIN_TO_SHORT{$domain_name} && $r !~ /^\/3g*/);
+            $SUB_ISDN{$r}++;
+        }
+    }
+}
+message("è¿‡æ»¤ç½‘ç®¡è¯»å–æ—¥å¿—");
+#æ˜Œå¹³F5ipéƒ½å…ˆè®¤ä¸ºåˆæ³•
 $GATEWAY{'221.179.217.230'}=1;
 $GATEWAY{'221.179.217.231'}=1;
 $GATEWAY{'221.179.217.20'}=1;
 $GATEWAY{'221.179.217.21'}=1;
 
-foreach my $domain_name (keys %CONFIG_LOGFILE)
-{
-	my $hourFiles_ref=$CONFIG_LOGFILE{$domain_name}{'hourFiles'};
-	my @line=();
-	foreach my $hourFile (values %$hourFiles_ref)
-	{
-		if(-e $hourFile)
-		{
-			open FILE , "<$hourFile" ;
-			#if($LOGFILE_CONFIG_COOKIE{$domain_name}{'pubsys'} eq 'wapcms' || $LOGFILE_CONFIG_COOKIE{$domain_name}{'pubsys'} eq 'dpool' 
-			if($LOGFILE_CONFIG_COOKIE{$domain_name}{'pubsys'} eq 'wapcms' || $LOGFILE_CONFIG_COOKIE{$domain_name}{'pubsys'} eq 'dpool' || $domain_name eq 'book_pibao_3g_sina_com_cn' || $domain_name eq 'nba.prog.3g.sina.com.cn' || $domain_name eq 'nba2.prog.3g.sina.com.cn' || $domain_name eq 'sinatv.sina.com.cn' || $domain_name eq 'book.prog.3g.sina.com.cn' || $domain_name eq 'stock.prog.3g.sina.com.cn' || $domain_name eq 'wapsite.3g.sina.com.cn')
-			{
-				while(<FILE>)
-				{
-					my ($time,$mobile,$request,$ua,$ip)=parseIsdnCookie($_);
-					$ip =~ s/[\[\]]//g;
-					$request =~ s/\s//g;
-					if($GATEWAY{$ip}==1)
-					{
-						push @line,[$request,$mobile];	
-					}
-				}
-			}
-			else
-			{
-				while(<FILE>)
-				{
-					my ($time,$mobile,$request,$ua,$ip)=parseIsdn($_);
-					$ip =~ s/[\[\]]//g;
-					$request =~ s/\s//g;
-					if($GATEWAY{$ip}==1)
-					{
-						push @line,[$request,$mobile];	
-					}
-				}
-			}
-			close FILE;
-		}
-		else
-		{
-			print "$HALF_HOUR_DAY $HALF_HOUR_HOUR cannot find $hourFile\n";
-			my $cmd = "echo '$HALF_HOUR_DAY $HALF_HOUR_HOUR cannot find $hourFile' >> /tmp/index_err ";
-			system($cmd);
-		}
-	}
-	$ALL_ISDN{$domain_name}=\@line;
-}
+=pod
+å°†éœ€è¦ALL_ISDNçš„å‡ ä¸ªéƒ¨åˆ†ï¼Œç»“åˆèµ·æ¥åš
+åŒ…æ‹¬ï¼š
+åˆ›å»ºæ’è¡Œæ¦œæ—¥å¿—
+åˆ›å»ºè¯»ä¹¦äº§å“æ’è¡Œæ¦œæ—¥å¿—
+åˆ›å»ºSUB_ISDN
+ä»»åŠ¡ç‚¹å‡»é‡åˆ†æ
 
-message("´´½¨ÅÅĞĞ°ñÈÕÖ¾");
+$PERL_PATH="/usr/local/sinawap/perl/bin/perl";
+%CONFIGS = {};
+
+message("åˆ›å»ºæ’è¡Œæ¦œæ—¥å¿—");
 foreach my $domain_name(keys %ALL_ISDN)
 {
-	next if($LOGFILE_CONFIG_COOKIE{$domain_name}{'pubsys'} ne 'wapcms');
-	my $file = "/tmp/${domain_name}_${HALF_HOUR_YEAR}_${HALF_HOUR_MON}_${HALF_HOUR_DAY}_${HALF_HOUR_HOUR}";
-	open(F,"+>$file") or warn $!;	
-	foreach my $line (@{$ALL_ISDN{$domain_name}})
-	{
-		print F "@$line\n";	
-	}
-	close(F) or warn $!;sleep 1;
-	system("/usr/local/sinawap/perl/bin/perl /data1/sinastat/code/run/rss/news_rank.pl ${domain_name} ${HALF_HOUR_YEAR} ${HALF_HOUR_MON} ${HALF_HOUR_DAY} ${HALF_HOUR_HOUR} >> /tmp/news_rank.log 2>&1 &");
+    next if($LOGFILE_CONFIG_COOKIE{$domain_name}{'pubsys'} ne 'wapcms');
+    my $file = "/tmp/${domain_name}_${HALF_HOUR_YEAR}_${HALF_HOUR_MON}_${HALF_HOUR_DAY}_${HALF_HOUR_HOUR}";
+    open(F,"+>$file") or warn $!;	
+    foreach my $line (@{$ALL_ISDN{$domain_name}})
+    {
+        print F "@$line\n";	
+    }
+    close(F) or warn $!;sleep 1;
+    system("/usr/local/sinawap/perl/bin/perl /data1/sinastat/code/run/rss/news_rank.pl ${domain_name} ${HALF_HOUR_YEAR} ${HALF_HOUR_MON} ${HALF_HOUR_DAY} ${HALF_HOUR_HOUR} >> /tmp/news_rank.log 2>&1 &");
 }
 
-message("´´½¨¶ÁÊé²úÆ·ÅÅĞĞ°ñÈÕÖ¾");
+message("åˆ›å»ºè¯»ä¹¦äº§å“æ’è¡Œæ¦œæ—¥å¿—");
 #foreach my $domain_name(keys %ALL_ISDN)
 {
-	my $domain_name = 'book.prog.3g.sina.com.cn';
-	my $file = "/tmp/${domain_name}_${HALF_HOUR_YEAR}_${HALF_HOUR_MON}_${HALF_HOUR_DAY}_${HALF_HOUR_HOUR}";
-	open(F,"+>$file") or warn $!;	
-	foreach my $line (@{$ALL_ISDN{$domain_name}})
-	{
-		print F "@$line\n";	
-	}
-	close(F) or warn $!;sleep 1;
-	system("/usr/local/sinawap/perl/bin/perl /data1/sinastat/code/run/rss/book_rank.pl ${domain_name} ${HALF_HOUR_YEAR} ${HALF_HOUR_MON} ${HALF_HOUR_DAY} ${HALF_HOUR_HOUR} >> /tmp/book_rank.log 2>&1 &");
-}
-
-message("¾«¼òÈÕÖ¾");
-foreach my $domain_name (keys %CONFIG_LOGFILE)
-{
-	foreach my $r_arr_p (@{$ALL_ISDN{$domain_name}})
-	{
-		my @r_arr = @$r_arr_p;
-		my $r = $r_arr[0];
-		if($r =~ m/[\?&]pos\=/)
-		{
-			$r =~s/\s//g;
-			$r =~s/[\?&]vt=[^&]*//g;
-			$r =~s/[\?&]et=[^&]*//g;
-			$r =~s/[\?&]mode=[^&]*//g;
-#			$r =~s/[\?&]et=\d*//g;
-			$r =~s/[\?&]gsid=[^&]*//g;
-			$r =~s/[\?&]from=gd[^&]*//g;
-			$r =~s/[\?&]wm=[^&]*//g;
-
-#ÕıÎÄÏÂÍÆ¼öÌæ»»
-			$r =~s/pos=text_old/pos=6/;
-
-			$r =~s/[\?&]MISC_ID=[^&]*//g;
-			$r =~s/&MISC_SessionID=[^&]*//g;
-			$r =~s/&MISC_AccessMode=[^&]*//g;
-			$r =~s/&MISC_ServiceID=[^&]*//g;
-			$r =~s/&PHPSESSID=[^&]*//g;
-			$r =~s/\/&/\/\?/g;
-			#¶ÌÓòÃû¼ÓÇ°×º by lixiang8 20100514
-			$r = $LONG_DOMAIN_TO_SHORT{$domain_name}.$r if(defined $LONG_DOMAIN_TO_SHORT{$domain_name} && $r !~ /^\/3g*/);
-			$SUB_ISDN{$r}++;
-		}
-	}
-}
-
-print Dumper(\%SUB_ISDN);
-
-message("Ê×Ò³µã»÷Á¿·ÖÎö");
-{
-	my %url_num=();
-
-#ÀËÊ×¹Ì¶¨Á´½ÓÅäÖÃ
-	my $addr_pos=requestURL("http://wapcms.pub.sina.com.cn/ms/wap_home_page/block_view.php");
-#	$addr_pos=$converter->convert($addr_pos);print $addr_pos;
-	print "¹Ì¶¨Á¬½ÓÅäÖÃ\n";
-	print $addr_pos;
-	print "¹Ì¶¨Á¬½ÓÅäÖÃ\n";
-	foreach my $line (split(/\n/,$addr_pos))
-	{
-#    $line =~m|<a href=\"(.*)?\">(.*)?</a>|;
-		my @line_arr = split(/,/,$line);
-    my $url = $line_arr[3];
-    my $name = $line_arr[2];
-    		$url =~ s/\r//g;
-		next if($url !~ /^http\:/);
-		$url =~ s/amp\;//g;
-		$url =~ s/(http\:\/\/([^\/]*))//g;
-		my $surl = $1;
-		my $sdomain = $2;
-		if(defined $SHORT_DOMAIN_TO_LONG{$sdomain} && $url !~ /^\/3g*/)
-		{
-			$url = $sdomain.$url;
-			$surl = "http://";
-		}
-		$url =~s/[\?&]vt=[^&]*//g;
-		$url =~s/[\?&]et=[^&]*//g;
-		$url =~s/[\?&]mode=[^&]*//g;
-		$url =~s/[\?&]pos=[^&]*//g;
-		$url =~s/\/&/\/\?/g;
-		my $url2 = $url;
-		my $url3 = $url;
-		my $url4 = $url;
-		#pos=1¼ò°æ£¬100²Ê°å£¬101²Ê°å,200¹ã¶«ÀËÊ×
-		if($url =~ m/\/[^\?\&\/]*$/){$url .='?pos=1';$url2 .='?pos=100';$url3 .='?pos=101';$url4 .='?pos=200';}
-		else{$url .='&pos=1';$url2 .='&pos=100';$url3 .='&pos=101';$url4 .='&pos=200';}
-		print "[$name-$url]\n";
-		$url_num{$url}{'t'} = $name;
-		$url_num{$url}{'n'} = $SUB_ISDN{$url};
-		$url_num{$url}{'u'} = $surl;
-		$url_num{$url2}{'t'} = $name;
-		$url_num{$url2}{'n'} = $SUB_ISDN{$url2};
-		$url_num{$url2}{'u'} = $surl;
-		$url_num{$url3}{'t'} = $name;
-		$url_num{$url3}{'n'} = $SUB_ISDN{$url3};
-		$url_num{$url3}{'u'} = $surl;
-		$url_num{$url4}{'t'} = $name;
-		$url_num{$url4}{'n'} = $SUB_ISDN{$url4};
-		$url_num{$url4}{'u'} = $surl;
-		$URL_TITLE{$url4}{'t'} = $name;
-		$URL_TITLE{$url4}{'n'} = $SUB_ISDN{$url4};
-		$URL_TITLE{$url4}{'c'} = '¹ã¶«ÀËÊ×';
-		$URL_TITLE{$url4}{'u'} = $surl;
-	}	
-
-	#»ñÈ¡ÀËÊ×µØÖ·
-#	my $addr=requestURL("http://218.206.86.158/portal/custom_history.conf");
-	my $addr=requestURL("http://71.wapcms.pub.sina.com.cn/ms/wap_home_page/custom_check.php");
-	foreach my $line (split(/\n/,$addr))
-	{
-		my (undef,undef,$name,$url) = split(/,/,$line);
-		$url =~ s/amp\;//g;
-		$url =~ s/\r//g;
-		$url =~ s/(http\:\/\/([^\/]*))//g;
-		my $surl = $1;
-		my $sdomain = $2;
-		if(defined $SHORT_DOMAIN_TO_LONG{$sdomain} && $url !~ /^\/3g*/)
-		{
-			$url = $sdomain.$url;
-			$surl = "http://";
-		}
-		my $url2 = $url;
-		my $url3 = $url;
-		my $url4 = $url;
-		my $url5 = $url;
-		#pos=1¼ò°æ£¬100²Ê°å£¬101²Ê°å,200¹ã¶«ÀËÊ×
-		if($url =~ m/\/[^\?\&\/]*$/){$url .='?pos=1';$url2 .='?pos=3';$url3 .='?pos=100';$url4 .='?pos=101';$url5 .='?pos=200';}
-		else{$url .='&pos=1';$url2 .='&pos=3';$url3 .='&pos=100';$url4 .='&pos=101';$url5 .='&pos=200';}
-		$url_num{$url}{'t'} = $name;
-		$url_num{$url}{'n'} = $SUB_ISDN{$url};
-		$url_num{$url}{'u'} = $surl;
-		$url_num{$url2}{'t'} = $name;
-		$url_num{$url2}{'n'} = $SUB_ISDN{$url2};
-		$url_num{$url2}{'u'} = $surl;
-		$url_num{$url3}{'t'} = $name;
-		$url_num{$url3}{'n'} = $SUB_ISDN{$url3};
-		$url_num{$url3}{'u'} = $surl;
-		$url_num{$url4}{'t'} = $name;
-		$url_num{$url4}{'n'} = $SUB_ISDN{$url4};
-		$url_num{$url4}{'u'} = $surl;
-		$url_num{$url5}{'t'} = $name;
-		$url_num{$url5}{'n'} = $SUB_ISDN{$url5};
-		$url_num{$url5}{'u'} = $surl;
-		$URL_TITLE{$url5}{'t'} = $name;
-		$URL_TITLE{$url5}{'n'} = $SUB_ISDN{$url5};
-		$URL_TITLE{$url5}{'c'} = '¹ã¶«ÀËÊ×';
-		$URL_TITLE{$url5}{'u'} = $surl;
-	}
-
-
-	#ÍÆ¼öÎ»µÈ·ÇÀËÊ×ÅäÖÃÎÄµµ3
-	my $addr_pos=requestURL("http://wapcms.pub.sina.com.cn/proc/channel_recommend/check_all.php");
-#	print "000000$addr_pos\n";
-#	$addr_pos=$converter->convert($addr_pos);
-#	print "000$addr_pos\n";
-	foreach my $line (split(/\<br\>/,$addr_pos))
-	{
-    $line =~m|<a href=\"(.*)?\">(.*)?</a>|;
-    my $url = $1;
-    my $name = $2;
-		$url =~ s/amp\;//g;
-		$url =~ s/\r//g;
-		$url =~ s/(http\:\/\/([^\/]*))//g;
-		my $surl = $1;
-		my $sdomain = $2;
-		if(defined $SHORT_DOMAIN_TO_LONG{$sdomain} && $url !~ /^\/3g*/)
-		{
-			$url = $sdomain.$url;
-			$surl = "http://";
-		}
-		if($url =~ m/\/[^\?\&\/]*$/){$url .='?pos=6';}
-		else{$url .='&pos=6';}
-		$url_num{$url}{'t'} = $name;
-		$url_num{$url}{'n'} = $SUB_ISDN{$url};
-		$url_num{$url}{'u'} = $surl;
-	}	
-	
-
-#	print Dumper(\%url_num);
-	
-	message("ÀËÊ×Èë¿â´¦Àí");
-	my $db = new db('wap_master');
-	my $conn = $db->{'conn'};
-	my ($sql,$stmt);
-	my $tenDaysAgo = dateConv($GDATE,-31,'yyyy-mm-dd');
-	my $visit_day = $HALF_HOUR_YEAR.'-'.$HALF_HOUR_MON.'-'.$HALF_HOUR_DAY;
-	my $visit_hour = $HALF_HOUR_HOUR.':00';
-	$conn->do("set names 'latin1'");
-	$conn->do("delete from SINA3G_INDEXPAGE_TOP_URLS_HOUR_STAT where visit_day = '".$tenDaysAgo."' and source='$source'");
-	print "delete1\n";
-	$conn->do("delete from SINA3G_INDEXPAGE_TOP_URLS_HOUR_STAT where visit_day = '$visit_day' and visit_hour='$visit_hour' and source='$source'");
-	print "delete2\n";
-	$sql="insert into SINA3G_INDEXPAGE_TOP_URLS_HOUR_STAT 
-					set url=? , 
-						title=?,
-						pv=? ,
-						visit_day='$visit_day',
-						visit_hour='$visit_hour',
-						source='$source'
-						";
-	$stmt=$conn->prepare($sql);
-	foreach my $url (keys %url_num)
-	{
-		my $title = $url_num{$url}{'t'};
-		my $pv = $url_num{$url}{'n'};
-		$url = $url_num{$url}{'u'}.$url;
-		print "$url,$title,$pv\n";
-		next if($pv eq undef);
-		next if($title eq undef);
-#		my $pv = ($url_num{$url}{'n'} eq undef) ? 0 : $url_num{$url}{'n'};
-		#$url = 'http://3g.sina.com.cn'.$url;
-		$stmt->execute($url,$title,$pv) or message("insert failed:$sql".$DBI::errstr);
-	}
-	
-	my $sql_complete = "replace RSS_HALF_HOUR_PROG_STATUS set time = '$visit_day $visit_hour',table_name = 'SINA3G_INDEXPAGE_TOP_URLS_HOUR_STAT',ip = '221.179.175.133';";
-	$conn->do($sql_complete);
-
-	$conn->disconnect;
-	
-}
-
-
-message("ÆµµÀÊ×Ò³µã»÷Á¿·ÖÎö");
-{
-#ĞèÒªÍ³¼ÆµÄÓòÃûºÍÆäÊ×Ò³µÄ¶ÔÓ¦¹ØÏµ¹úÄÚ£¬¹ú¼Ê£¬Éç»á£¬ÌåÓı¡¢ÓéÀÖ¡¢²Æ¾­¡¢Á½ĞÔ¡¢¶ÁÊé¡¢²©¿Í
-my %DOMAINS = (
-
-    '¹úÄÚ' => {
-        'domain' => 'news.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/news/index.php?tid=141&did=48&vid=68&cid=785&sid=0', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    '¹ú¼Ê' => {
-        'domain' => 'news.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/news/index.php?tid=141&did=49&vid=68&cid=786&sid=0', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    'Éç»á' => {
-        'domain' => 'news.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/news/index.php?tid=141&did=50&vid=68&cid=787&sid=0', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    '·¨ÖÆ' => {
-        'domain' => 'news.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/news/index.php?tid=141&did=51&vid=68&cid=788&sid=0', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    '½¡¿µ' => {
-        'domain' => 'news.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/news/index.php?tid=141&did=53&vid=68&cid=846&sid=0', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    '°ÂÔË' => {
-        'domain' => '2008.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/2008/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    'ÉñÆß' => {
-        'domain' => 'news.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/news/index.php?did=519&tid=122&vid=69', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-#    'Å·ÖŞ±­' => {
-#        'domain' => 'sports.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-#        'index_url' => '/3g/sports/index.php?did=12', #Ê×Ò³Á¬½Ó,
-#        'display' => '1',
-#    },
-    '½ÌÓı' => {
-        'domain' => 'edu.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/edu/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    'ÌåÓı' => {
-        'domain' => 'sports.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/sports/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    'ÓéÀÖ' => {
-        'domain' => 'ent.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/ent/', #Ê×Ò³Á¬½Ó,
-        'display' => '1'
-     },
-    'ÓéÀÖ¹ö¶¯' => {
-        'domain' => 'pro.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/pro/index.php?tid=240&did=20&vid=1536&ch=ent', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    '¿Æ¼¼¹ö¶¯' => {
-        'domain' => 'pro.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/pro/index.php?tid=240&did=20&vid=1536&ch=tech', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    '²Æ¾­¹ö¶¯' => {
-        'domain' => 'pro.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/pro/index.php?tid=240&did=20&vid=1536&ch=finance', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    '¹úÄÚ¹ö¶¯' => {
-        'domain' => 'pro.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/pro/index.php?tid=240&did=20&vid=1536&ch=gn', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    '¹ú¼Ê¹ö¶¯' => {
-        'domain' => 'pro.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/pro/index.php?tid=240&did=20&vid=1536&ch=gj', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    'Éç»á¹ö¶¯' => {
-        'domain' => 'pro.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/pro/index.php?tid=240&did=20&vid=1536&ch=sh', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    '²©¿Í¹ö¶¯' => {
-        'domain' => 'pro.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/pro/index.php?tid=240&did=20&vid=1536&ch=blog', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    '²Æ¾­' => {
-        'domain' => 'finance.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/finance/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-        
-    '¶ÁÊé' => {
-        'domain' => 'book.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/book/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    'ÓÎÏ·' => {
-        'domain' => 'game.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/game/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    '²©¿Í' => {
-        'domain' => 'blog.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/blog/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-
-    '¾üÊÂ' => {
-        'domain' => 'mil.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/mil/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    
-    'Æû³µ' => {
-        'domain' => 'auto.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/auto/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    '·¿²ú' => {
-        'domain' => 'house.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/house/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-
-    'ÊÖ»ú' => {
-        'domain' => 'mobile.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/mobile/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    'Ğ¦»°' => {
-        'domain' => 'joke.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/joke/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    'Ó°Ôº' => {
-        'domain' => 'tv.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/tv/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    'Ö±²¥' => {
-        'domain' => 'live.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/live/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    'ÂÛÌ³' => {
-        'domain' => 'bbs.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/bbs/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    'Å®ĞÔ' => {
-        'domain' => 'eladies.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/eladies/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    'ÉçÇø' => {
-        'domain' => 'community.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/community/prog/home/home.php', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    'Ó¢³¬' => {
-        'domain' => '',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/sports/?&tid=31&did=30&vid=17&cid=652', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    'NBA' => {
-        'domain' => '',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/sports/index.php?tid=12&did=45&vid=18', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    'Í¼Æ¬' => {
-        'domain' => '',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/common/dlf/channel.php?mid=46&bid=5000310', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    'ÁåÉù' => {
-        'domain' => '',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/common/dlf/channel.php?mid=46&bid=5000305', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    'ÏÂÔØÖĞĞÄ' => {
-        'domain' => '',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/prog/wapsite/fd/index.php', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-
-    'ÆÀÂÛ' => {
-        'domain' => '',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/news/index.php?tid=141&did=52&vid=68&cid=789&sid=0', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },    
-    
-    #²»²ÎÓëÊ×Ò³Í³¼Æ£¬µ«ÒòÎªÆäËûÆµµÀ»áÓÃµ½Õâ¸öÈÕÖ¾
-    'Ó¦ÓÃÇ°¶Ë1' => {
-        'domain' => 'wapsite.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'display' => '0',
-    },
-
-    #²»²ÎÓëÊ×Ò³Í³¼Æ£¬µ«ÒòÎªÆäËûÆµµÀ»áÓÃµ½Õâ¸öÈÕÖ¾
-    'Ó¦ÓÃÇ°¶Ë2' => {
-        'domain' => 'nba.prog.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'display' => '0',
-    },
-
-    #²»²ÎÓëÊ×Ò³Í³¼Æ£¬µ«ÒòÎªÆäËûÆµµÀ»áÓÃµ½Õâ¸öÈÕÖ¾
-    'Ó¦ÓÃÇ°¶Ë3' => {
-        'domain' => 'stock.prog.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'display' => '0',
-    },
-    
-    #²»²ÎÓëÊ×Ò³Í³¼Æ£¬µ«ÒòÎªÆäËûÆµµÀ»áÓÃµ½Õâ¸öÈÕÖ¾
-    'Ó¦ÓÃÇ°¶Ë4' => {
-        'domain' => 'book.prog.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'display' => '0',
-    },    
-    
-
-    #³ÌĞòÈÕÖ¾£¬²»²ÎÓëÆµµÀÊ×Ò³
-    'WAPCMS³ÌĞò' => {
-        'domain' => 'pro.3g.sina.com.cn',
-        'display' => '0',
-    },
-
-   #####ÃÎÍøÒµÎñ
-       'wapdl2' => {
-        'domain' => 'wapdl2.sina.com.cn',
-        'display' => '0',
-		},
-		
-    'É«Í¼' => {
-        'domain' => 'sexpic.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/sexpic/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    
-    'Á½ĞÔ' => {
-        'domain' => 'sex.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/sex/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-
-    'ĞÇ×ù' => {
-        'domain' => 'ast.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/ast/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    '¿Æ¼¼' => {
-            'domain' => 'tech.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-            'index_url' => '/3g/tech/', #Ê×Ò³Á¬½Ó,
-            'display' => '1',
-    },
-    
-    '²ÊÆ±' => {
-            'domain' => 'lotto.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-            'index_url' => '/3g/lotto/', #Ê×Ò³Á¬½Ó,
-            'display' => '1',
-    },  
-    'ÆæÎÅ' => {
-            'domain' => 'qiwen.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-            'index_url' => '/3g/qiwen/', #Ê×Ò³Á¬½Ó,
-            'display' => '1',
-    },        
-    '¶¯Ì¬³Ø' => {
-        'domain' => 'dpool.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => 'http://3g.sina.com.cn/dpool/', #Ê×Ò³Á¬½Ó,
-        'display' => '0',
-    },     
-    '¹ÉÆ±' => {
-            'domain' => '3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey  #ÒòÎª¹ÉÆ±Ã»ÓĞÓòÃûÊÇÔÚÇ°¶Ëµ¥¶ÀËã
-            'index_url' => '/3g/finance/index.php?tid=60&did=13&vid=512', #Ê×Ò³Á¬½Ó,
-            'display' => '1',
-    },
-    
-#    '¹ÉÆ±' => {
-#            'domain' => '3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey  #ÒòÎª¹ÉÆ±Ã»ÓĞÓòÃûÊÇÔÚÇ°¶Ëµ¥¶ÀËã
-#            'index_url' => '/prog/wapsite/stock/index.php', #Ê×Ò³Á¬½Ó,
-#            'display' => '1',
-#    },
-
-		'ÊÓÆµ' => {
-            'domain' => 'video.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-            'index_url' => '/3g/video/', #Ê×Ò³Á¬½Ó,
-            'display' => '1',
-    },
-    
-    ###¾«Æ·Í³¼Æ###ÒÑ¾­ÔÙ¼Ó¾«Æ·Í³¼ÆĞèÒªkeyÖĞ°üº¬¾«Æ·×ÖÑù,ÔÚºóÃæµÄ³ÌĞòÖĞ»áÌØÊâ´¦Àí
-    '¾«Æ·Å®ĞÔ' => {
-        'domain' => 'lady.jp.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/lady/', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    }, 
-    '¾«Æ·ÈÕÖ¾' => {
-        'domain' => 'prog.jp.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => 'http://prog.jp.3g.sina.com.cn', #Ê×Ò³Á¬½Ó,
-        'display' => '0',
-    },       
-   ###¾«Æ·Í³¼Æ
-   
-       'ÊÓÆµÅÅĞĞÓÃ' => {
-        'domain' => 'site.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '/3g/site/', #Ê×Ò³Á¬½Ó,
-        'display' => '0',
-    },       
-    'ìÅ÷È¹ã¶«Ê×Ò³' => {
-        'domain' => 'index.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-        'index_url' => '', #Ê×Ò³Á¬½Ó,
-        'display' => '1',
-    },
-    'ÊÀ²©' => {
-            'domain' => 'expo.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-            'index_url' => '/3g/expo/', #Ê×Ò³Á¬½Ó,
-            'display' => '1',
-    },  
-    'ÊÀ½ç±­' => {
-            'domain' => '2010.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-            'index_url' => '/3g/2010/', #Ê×Ò³Á¬½Ó,
-            'display' => '1',
-    },  
-    'ÎÄÊ·' => {
-            'domain' => 'cul.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-            'index_url' => '/3g/cul/', #Ê×Ò³Á¬½Ó,
-            'display' => '1',
-    },  
-    '¹ã¶«¶ÁÊé' => {
-            'domain' => 'book.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-            'index_url' => '/3g/book/?vid=2565', #Ê×Ò³Á¬½Ó,
-            'display' => '1',
-    },  
-    'ÂÃÓÎ' => {
-            'domain' => 'travel.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-            'index_url' => '/3g/travel/', #Ê×Ò³Á¬½Ó,
-            'display' => '1',
-    },
-    '²İ¸ù²©¿Í' => {
-            'domain' => '3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-            'index_url' => '/3g/blog/?sa=t331d119v2623', #Ê×Ò³Á¬½Ó,
-            'display' => '1',
-    },
-    'Âş»­' => {
-            'domain' => 'comic.3g.sina.com.cn',  #ÓòÃû£¬ÔÚÅäÖÃÎÄ¼şÀïµÄÓòÃûkey
-            'index_url' => '/3g/comic/', #Ê×Ò³Á¬½Ó,
-            'display' => '1',
-    },
-);
-
-
-
-my %pos2domains = (
-
-'8' => '¹úÄÚ',	
-'9' => '¹ú¼Ê',	
-'10' => 'ÌåÓı',	
-'11' => 'Éç»á',	
-'12' => 'ÓéÀÖ',	
-'13' => 'Á½ĞÔ',	
-'14' => 'É«Í¼',	
-'15' => '¶ÁÊé',	
-'16' => '²©¿Í',	
-'17' => '²Æ¾­',	
-'18' => '¿Æ¼¼',	
-'19' => 'ĞÇ×ù',	
-'20' => '¾«Æ·Å®ĞÔ',	
-'21' => '¹ÉÆ±',	
-'22' => 'ÓÎÏ·',	
-'23' => 'ÊÓÆµ',	
-'24' => '¾üÊÂ',	
-
-'25' => 'Æû³µ',
-'26' => '·¿²ú',
-'27' => 'ÊÖ»ú',
-'28' => 'Ğ¦»°',
-'29' => 'Ó°Ôº',
-'30' => 'Ö±²¥',
-'31' => 'ÂÛÌ³',
-'32' => 'Å®ĞÔ',
-'33' => 'ÉçÇø',
-
-'34' => 'Ó¢³¬',
-'35' => 'Í¼Æ¬',
-'36' => 'ÁåÉù',
-'37' => 'ÏÂÔØÖĞĞÄ',
-
-'38' => 'ÆÀÂÛ',
-'39' => '·¨ÖÆ',
-'40' => 'NBA',
-#'41' => 'Ïà¹ØĞÂÎÅ³ÊÏÖÑùÊ½'
-'42' => '½¡¿µ',
-#'43' => 'ÕıÎÄÒ³ÄÚÁ´½Ó'
-#'44' => '°®ÎÊ-¡·ÕÅ­U'
-'45' => '½ÌÓı',
-'46' => 'Å·ÖŞ±­',
-'47' => '°ÂÔË',
-'48' => 'ÉñÆß',
-#'100' => 'ÀËÊ×Óé°æ',
-#'100' => '¸ÄÎªÀËÊ×²Ê°å',2009Äê5ÔÂ22ÈÕ9:58:51
-#'101' => 'ÀËÊ×3G°æ',
-'49' => 'ìÅ÷È¹ã¶«Ê×Ò³',
-#'50' => '¿Æ¼¼3GÊ×Ò³',
-'54' => 'ÊÀ²©',
-'55' => 'ÊÀ½ç±­',
-'56' => 'ÎÄÊ·',
-'57' => '¹ã¶«¶ÁÊé',
-'58' => 'ÂÃÓÎ',
-'59' => '²İ¸ù²©¿Í',
-'60' => 'Âş»­',
-'200' => '¹ã¶«ÀËÊ×',
-);	
-
-#my $channel = 'ÊÓÆµ';
-foreach my $channel (keys %DOMAINS) 
-{
-		#if ($channel ne '¹ÉÆ±') {next;}
-    my $domain= $DOMAINS{$channel}{'domain'};	
-    my $index_url= $DOMAINS{$channel}{'index_url'};
-    next if(!defined($index_url) or $index_url eq '');
-    my $display= $DOMAINS{$channel}{'display'};	
-    if ($display) {
-        $INDEX_RUL{$index_url} = $channel;
+    my $domain_name = 'book.prog.3g.sina.com.cn';
+    my $file = "/tmp/${domain_name}_${HALF_HOUR_YEAR}_${HALF_HOUR_MON}_${HALF_HOUR_DAY}_${HALF_HOUR_HOUR}";
+    open(F,"+>$file") or warn $!;	
+    foreach my $line (@{$ALL_ISDN{$domain_name}})
+    {
+        print F "@$line\n";	
     }
-	my $display 		= $DOMAINS{$channel}{'display'};
-	my $hourFile_ref = $CONFIG_LOGFILE{$domain}{'hourFiles'};
-    print "$channel|$domain|url:$index_url|$hourFile_ref|\n";
-	foreach my $hourFile (values %$hourFile_ref)
-	{
-        if(-e $hourFile)
-				 {$hour_files_hash{$hourFile} = 1;}
-	}
-	my $url = "http://3g.sina.com.cn$index_url";
-    if ($channel=~m/¾«Æ·/) {
-    	$url = "http://jp.3g.sina.com.cn$index_url";
-    }
-    $content=requestURL("$url");
-    print "Ê×Ò³ $url\n";
+    close(F) or warn $!;sleep 1;
+    system("/usr/local/sinawap/perl/bin/perl /data1/sinastat/code/run/rss/book_rank.pl ${domain_name} ${HALF_HOUR_YEAR} ${HALF_HOUR_MON} ${HALF_HOUR_DAY} ${HALF_HOUR_HOUR} >> /tmp/book_rank.log 2>&1 &");
+}
 
-	$content=$converter->convert($content);
-	if (($channel ne '¹ÉÆ±') && ($channel ne 'ÉçÇø')) {
-    while($content=~s/href=["'](.*?)["']\>(.*?)<\/a\>/href/m) {
-        my $title = $2;
-        my $url = $1;
+=cut
+
+
+message("é¦–é¡µç‚¹å‡»é‡åˆ†æ");
+sub count_index{
+    my %url_num=();
+    my $addr_pos=requestURL("http://wapcms.pub.sina.com.cn/ms/wap_home_page/block_view.php");
+    print "å›ºå®šè¿æ¥é…ç½®\n";
+    print $addr_pos;
+    print "å›ºå®šè¿æ¥é…ç½®\n";
+    my @url_postfix = ("pos=1", "pos=100", "pos=101", "pos=200");
+    foreach my $line (split(/\n/,$addr_pos))
+    {
+        my @line_arr = split(/,/,$line);
+        my $url = $line_arr[3];
+        my $name = $line_arr[2];
         $url =~ s/\r//g;
-        $url=~s|\&amp;|\&|g;
-        $url=~s|http\:\/\/(([^\/]*))||;
-		my $surl = $1;
-		my $sdomain = $2;
-		if(defined $SHORT_DOMAIN_TO_LONG{$sdomain} && $url !~ /^\/3g*/)
-		{
-			$url = $sdomain.$url;
-			$surl = "";
-		}
-		$url=~s|[\?\&]PHPSESSID=[^&]*||;
-        $url=~s|[\?\&]vt=[^&]*||;
-        $url=~s|^\?|$index_url\?|;
-        $index_url =~m|(/3g/.+?/)|;
-		my $dir_url = $1;
-		if($url =~ m|/3g/site/|){
-			$url =~ m|(/3g/site/.+pos=\d+)|;
-        	$dir_url = $1;
+        next if($url !~ /^http\:/);
+        $url =~ s/amp\;//g;
+        $url =~ s/(http\:\/\/([^\/]*))//g;
+        my $surl = $1;
+        my $sdomain = $2;
+        if(defined $SHORT_DOMAIN_TO_LONG{$sdomain} && $url !~ /^\/3g*/)
+        {
+            $url = $sdomain.$url;
+            $surl = "http://";
         }
-				$url=~s|(^index\.php\?.*)|$dir_url$1|;        
-#
-				$url=~s|^\.\/(index\.php\?.*)|$dir_url$1|;        
+        $url =~s/[\?&]vt=[^&]*//g;
+        $url =~s/[\?&]et=[^&]*//g;
+        $url =~s/[\?&]mode=[^&]*//g;
+        $url =~s/[\?&]pos=[^&]*//g;
+        $url =~s/\/&/\/\?/g;
+        my $url2 = $url;
+        my $url3 = $url;
+        my $url4 = $url;
+        $prefix = ($url =~ m/\/[^\?\&\/]*$/) ? "?" : "&";
+        #if($url =~ m/\/[^\?\&\/]*$/){$url .='?pos=1';$url2 .='?pos=100';$url3 .='?pos=101';$url4 .='?pos=200';}
+        #else{$url .='&pos=1';$url2 .='&pos=100';$url3 .='&pos=101';$url4 .='&pos=200';}
+        print "[$name-$url]\n";
+        $url_num{$url}{'t'} = $name;
+        $url_num{$url}{'n'} = $SUB_ISDN{$url};
+        $url_num{$url}{'u'} = $surl;
+        $url_num{$url2}{'t'} = $name;
+        $url_num{$url2}{'n'} = $SUB_ISDN{$url2};
+        $url_num{$url2}{'u'} = $surl;
+        $url_num{$url3}{'t'} = $name;
+        $url_num{$url3}{'n'} = $SUB_ISDN{$url3};
+        $url_num{$url3}{'u'} = $surl;
+        $url_num{$url4}{'t'} = $name;
+        $url_num{$url4}{'n'} = $SUB_ISDN{$url4};
+        $url_num{$url4}{'u'} = $surl;
+        $URL_TITLE{$url4}{'t'} = $name;
+        $URL_TITLE{$url4}{'n'} = $SUB_ISDN{$url4};
+        $URL_TITLE{$url4}{'c'} = 'å¹¿ä¸œæµªé¦–';
+        $URL_TITLE{$url4}{'u'} = $surl;
+    }   
 
-#				$url = $dir_url;
-
-        $url=~s/.*SPURL\=http:\/\///gi;
-        my $num = $SUB_ISDN{$url};
-        $URL_TITLE{$url}{'t'} = $title;
-        $URL_TITLE{$url}{'n'} = $num;
-        $URL_TITLE{$url}{'c'} = $channel;
-		$URL_TITLE{$url}{'u'} = $surl;
-        print "|$title|$url|[$num]\n\n";
-
-    }
-   }
-   elsif ($channel eq '¹ÉÆ±'){
-    while($content=~s/href=["'](.*?)["']\>(.*?)<\/a\>/href/m) {
-        my $title = $2;
-        my $url = $1;
+    #è·å–æµªé¦–åœ°å€
+    my $addr=requestURL("http://71.wapcms.pub.sina.com.cn/ms/wap_home_page/custom_check.php");
+    foreach my $line (split(/\n/,$addr))
+    {
+        my (undef,undef,$name,$url) = split(/,/,$line);
+        $url =~ s/amp\;//g;
         $url =~ s/\r//g;
-        $url=~s|\&amp;|\&|g;
-        $url=~s|http\:\/\/(([^\/]*))||;
-		my $surl = $1;
-		my $sdomain = $2;
-		if(defined $SHORT_DOMAIN_TO_LONG{$sdomain} && $url !~ /^\/3g*/)
-		{
-			$url = $sdomain.$url;
-			$surl = "";
-		}
-		$url=~s|[\?\&]PHPSESSID=[^&]*||;
-        $url=~s|[\?\&]vt=[^&]*||;
-        $url=~s|^\?|$index_url\?|;
-        $url=~s/.*SPURL\=http:\/\///gi;
-        if ($url!~m|\/|) {
-        	$url = "/prog/wapsite/stock/$url";
+        $url =~ s/(http\:\/\/([^\/]*))//g;
+        my $surl = $1;
+        my $sdomain = $2;
+        if(defined $SHORT_DOMAIN_TO_LONG{$sdomain} && $url !~ /^\/3g*/)
+        {
+            $url = $sdomain.$url;
+            $surl = "http://";
         }
-#        elsif ($url!~m|3g.sina.com.cn|) {
-#        	$url = "3g.sina.com.cn$url";
-#        }
-        my $num = $SUB_ISDN{$url};
-        $URL_TITLE{$url}{'t'} = $title;
-        $URL_TITLE{$url}{'n'} = $num;
-        $URL_TITLE{$url}{'c'} = $channel;
-		$URL_TITLE{$url}{'u'} = $surl;
-        print "|$title|$url|[$num]\n\n";
+        my $url2 = $url;
+        my $url3 = $url;
+        my $url4 = $url;
+        my $url5 = $url;
+        if($url =~ m/\/[^\?\&\/]*$/){$url .='?pos=1';$url2 .='?pos=3';$url3 .='?pos=100';$url4 .='?pos=101';$url5 .='?pos=200';}
+        else{$url .='&pos=1';$url2 .='&pos=3';$url3 .='&pos=100';$url4 .='&pos=101';$url5 .='&pos=200';}
+        $url_num{$url}{'t'} = $name;
+        $url_num{$url}{'n'} = $SUB_ISDN{$url};
+        $url_num{$url}{'u'} = $surl;
+        $url_num{$url2}{'t'} = $name;
+        $url_num{$url2}{'n'} = $SUB_ISDN{$url2};
+        $url_num{$url2}{'u'} = $surl;
+        $url_num{$url3}{'t'} = $name;
+        $url_num{$url3}{'n'} = $SUB_ISDN{$url3};
+        $url_num{$url3}{'u'} = $surl;
+        $url_num{$url4}{'t'} = $name;
+        $url_num{$url4}{'n'} = $SUB_ISDN{$url4};
+        $url_num{$url4}{'u'} = $surl;
+        $url_num{$url5}{'t'} = $name;
+        $url_num{$url5}{'n'} = $SUB_ISDN{$url5};
+        $url_num{$url5}{'u'} = $surl;
+        $URL_TITLE{$url5}{'t'} = $name;
+        $URL_TITLE{$url5}{'n'} = $SUB_ISDN{$url5};
+        $URL_TITLE{$url5}{'c'} = 'å¹¿ä¸œæµªé¦–';
+        $URL_TITLE{$url5}{'u'} = $surl;
     }
-    while($content=~s/\<anchor>(.*?)<go href="(.*?)" accept-charset="UTF-8" method="post">/href/m) {
-        my $title = $1;
-        my $url = $2;
-        $url =~ s/\r//g;
-        $url=~s|\&amp;|\&|g;
-        $url=~s|http\:\/\/(([^\/]*))||;
-		my $surl = $1;
-		$url=~s|[\?\&]PHPSESSID=[^&]*||;
-        $url=~s|[\?\&]vt=[^&]*||;
-        $url=~s|^\?|$index_url\?|;
-        $url=~s/.*SPURL\=http:\/\///gi;
-        if ($url!~m|\/|) {
-        	$url = "/prog/wapsite/stock/$url";
-        }
-#        elsif ($url!~m|3g.sina.com.cn|) {
-#        	$url = "3g.sina.com.cn$url";
-#        }
-        my $num = $SUB_ISDN{$url};
-        $URL_TITLE{$url}{'t'} = $title;
-        $URL_TITLE{$url}{'n'} = $num;
-        $URL_TITLE{$url}{'c'} = $channel;
-		$URL_TITLE{$url}{'u'} = $surl;
-        print "|$title|$url|[$num]\n\n";
-    }    
-	}
-	 elsif ($channel eq 'ÉçÇø'){
-	 while($content=~s/href=[\"|\'](.*?)[\"|\']\>(.*?)<\/a\>/href/m) 
-	 {
-        $linknum++;
-        my $title = $2;
+
+
+    my $addr_pos=requestURL("http://wapcms.pub.sina.com.cn/proc/channel_recommend/check_all.php");
+    foreach my $line (split(/\<br\>/,$addr_pos))
+    {
+        $line =~ m|<a href=\"(.*)?\">(.*)?</a>|;
         my $url = $1;
+        my $name = $2;
+        $url =~ s/amp\;//g;
         $url =~ s/\r//g;
-        $url=~s|\&amp;|\&|g;
-        $url=~s|http\:\/\/(([^\/]*))||;
-		my $surl = $1;
-		my $sdomain = $2;
-		if(defined $SHORT_DOMAIN_TO_LONG{$sdomain} && $url !~ /^\/3g*/)
-		{
-			$url = $sdomain.$url;
-			$surl = "";
-		}
-		$url=~s|[\?\&]PHPSESSID=[^&]*||;
-        $url=~s|[\?\&]vt=[^&]*||;
-        $url=~s|^\?|$index_url\?|;
-        $url=~s/.*SPURL\=http:\/\///gi;
+        $url =~ s/(http\:\/\/([^\/]*))//g;
+        my $surl = $1;
+        my $sdomain = $2;
+        if(defined $SHORT_DOMAIN_TO_LONG{$sdomain} && $url !~ /^\/3g*/)
+        {
+            $url = $sdomain.$url;
+            $surl = "http://";
+        }
+        if($url =~ m/\/[^\?\&\/]*$/){$url .='?pos=6';}
+        else{$url .='&pos=6';}
+        $url_num{$url}{'t'} = $name;
+        $url_num{$url}{'n'} = $SUB_ISDN{$url};
+        $url_num{$url}{'u'} = $surl;
+    }   
 
-#        	$url =~ s|^[^3g.sina.com.cn]|3g.sina.com.cn$url|;
 
-#        $url =~s|^(\/community\/.*)|3g.sina.com.cn$1|;
-#        $url =~s|^(\/prog\/.*)|3g.sina.com.cn$1|;
-        my $num = $SUB_ISDN{$url};
-        $URL_TITLE{$url}{'t'} = $title;
-        $URL_TITLE{$url}{'n'} = $num;
-        $URL_TITLE{$url}{'c'} = $channel;
-		$URL_TITLE{$url}{'u'} = $surl;
-        print "|$title|$url|[$num]\n\n";
-    }	
+=pod
+    message("æµªé¦–å…¥åº“å¤„ç†");
+    my $db = new db('wap_master');
+    my $conn = $db->{'conn'};
+    my ($sql,$stmt);
+    my $tenDaysAgo = dateConv($GDATE,-31,'yyyy-mm-dd');
+    my $visit_day = $HALF_HOUR_YEAR.'-'.$HALF_HOUR_MON.'-'.$HALF_HOUR_DAY;
+    my $visit_hour = $HALF_HOUR_HOUR.':00';
+    $conn->do("set names 'latin1'");
+    $conn->do("delete from SINA3G_INDEXPAGE_TOP_URLS_HOUR_STAT where visit_day = '".$tenDaysAgo."' and source='$source'");
+    print "delete1\n";
+    $conn->do("delete from SINA3G_INDEXPAGE_TOP_URLS_HOUR_STAT where visit_day = '$visit_day' and visit_hour='$visit_hour' and source='$source'");
+    print "delete2\n";
+    $sql="insert into SINA3G_INDEXPAGE_TOP_URLS_HOUR_STAT 
+        set url=? , 
+            title=?,
+            pv=? ,
+            visit_day='$visit_day',
+            visit_hour='$visit_hour',
+            source='$source'
+                ";
+    $stmt=$conn->prepare($sql);
+    foreach my $url (keys %url_num)
+    {
+        my $title = $url_num{$url}{'t'};
+        my $pv = $url_num{$url}{'n'};
+        $url = $url_num{$url}{'u'}.$url;
+        print "$url,$title,$pv\n";
+        next if($pv eq undef);
+        next if($title eq undef);
+        $stmt->execute($url,$title,$pv) or message("insert failed:$sql".$DBI::errstr);
+    }
 
+    my $sql_complete = "replace RSS_HALF_HOUR_PROG_STATUS set time = '$visit_day $visit_hour',table_name = 'SINA3G_INDEXPAGE_TOP_URLS_HOUR_STAT',ip = '221.179.175.133';";
+    $conn->do($sql_complete);
+
+    $conn->disconnect;
+=cut
 }
- 
-}
-
-#¹ã¶«Ê×Ò³µ¥¶À´¦Àí Ò³ÃæÁ´½ÓÀ´×ÔÀËÊ×ÅäÖÃÎÄ¼ş
-{
-	#»ñÈ¡ÀËÊ×µØÖ·
-	my $channel = $pos2domains{'49'};
-	my $addr=requestURL("http://71.wapcms.pub.sina.com.cn/ms/wap_home_page/custom_check.php");
-	foreach my $line (split(/\n/,$addr))
-	{
-		my (undef,undef,$name,$url) = split(/,/,$line);
-		$url =~ s/\r//g;
-		$url =~ s/amp\;//g;
-		$url =~ s/http\:\/\/(([^\/]*))//g;
-		my $surl = $1;
-		my $sdomain = $2;
-		if(defined $SHORT_DOMAIN_TO_LONG{$sdomain} && $url !~ /^\/3g*/)
-		{
-			$url = $sdomain.$url;
-			$surl = "";
-		}
-		if($url =~ m/\/[^\?\&\/]*$/){$url .='?pos=49';}
-		else{$url .='&pos=49';}
-        
-    $URL_TITLE{$url}{'t'} = $name;
-    $URL_TITLE{$url}{'n'} = $SUB_ISDN{$url};
-    $URL_TITLE{$url}{'c'} = $channel;
-	$URL_TITLE{$url}{'u'} = $surl;
-	}
-	
-	#ÀËÊ×¹Ì¶¨Á´½Ó
-	my @word_tmp = (
-		"stock,¹ÉÆ±,¹ÉÆ±,http://3g.sina.com.cn/3g/finance/index.php?tid=60&did=13&vid=512",
-		"gn,ĞÂÎÅ,ĞÂÎÅ,http://3g.sina.com.cn/nc.php",
-		"gn,Ö±²¥,Ö±²¥,http://3g.sina.com.cn/3g/live/",
-		"gn,¹úÄÚĞÂÎÅ,¹úÄÚĞÂÎÅ,http://3g.sina.com.cn/3g/news/?tid=110&did=2&vid=88&cid=101",
-		"gj,¹ú¼ÊĞÂÎÅ,¹ú¼ÊĞÂÎÅ,http://3g.sina.com.cn/3g/news/?tid=110&did=3&vid=88&cid=104",
-		"ent,ÓéÀÖĞÂÎÅ,ÓéÀÖĞÂÎÅ,http://3g.sina.com.cn/3g/ent/",
-		"sport,ÌåÓıĞÂÎÅ,ÌåÓıĞÂÎÅ,http://3g.sina.com.cn/3g/sports/",
-		"auto,Æû³µ,Æû³µ,http://3g.sina.com.cn/3g/auto/",
-		"finance,²Æ¾­,²Æ¾­,http://3g.sina.com.cn/3g/finance/index.php?tid=60&did=2&vid=144",
-		"tech,¿Æ¼¼,¿Æ¼¼,http://3g.sina.com.cn/3g/tech/",
-		"sh,Éç»áĞÂÎÅ,Éç»áĞÂÎÅ,http://3g.sina.com.cn/3g/news/?tid=110&did=4&vid=88&cid=107",
-		"book,Êé¿â,Êé¿â,http://3g.sina.com.cn/3g/book/index.php?tid=162&did=17&vid=96&cid=0&sid=9506",
-		"book,·ÖÀà,·ÖÀà,http://3g.sina.com.cn/3g/book/index.php?tid=162&did=14&vid=96&cid=0&sid=9367",
-		"book,ÍÆ¼ö°ñ,ÍÆ¼ö°ñ,http://3g.sina.com.cn/3g/book/index.php?tid=162&did=4&vid=96&cid=0&sid=7387",
-		"prod,ÍøÕ¾ÅÅĞĞ,ÍøÕ¾ÅÅĞĞ,http://3g.sina.com.cn/prog/wapsite/webcounter/index.php",
-		"prod,¡¾Í¼¡¿Ò»ÖÜÃÀÍ¼ÏÂÔØ,¡¾Í¼¡¿Ò»ÖÜÃÀÍ¼ÏÂÔØ,http://3g.sina.com.cn/common/dlf/channel.php?mid=46&bid=5000310&from=3",
-		"prod,[ÊÓÆµ]³¬Å®×£¸£VCR,[ÊÓÆµ]³¬Å®×£¸£VCR,http://3g.sina.com.cn/common/dlf/channel.php?bid=5000167",
-		"prod,ìÅÁå,ìÅÁå,http://3g.sina.com.cn/common/dlf/channel.php?mid=46&bid=5000305",
-		"prod,¿áÍ¼,¿áÍ¼,http://3g.sina.com.cn/common/dlf/channel.php?mid=46&bid=5000310",
-		"prod,ÊÓÆµ,ÊÓÆµ,http://3g.sina.com.cn/common/dlf/channel.php?bid=5000167",
-		"prod,ÓÎÏ·,ÓÎÏ·,http://mbox.sina.com.cn/w/i.php?from=60001",
-		"sex,Á½ĞÔ,Á½ĞÔ,http://3g.sina.com.cn/3g/sex/",
-		"pic,É«Í¼,É«Í¼,http://3g.sina.com.cn/3g/sex/index.php?tid=160&did=2&vid=99&cid=0&sid=0",
-		"book,¶ÁÊé,¶ÁÊé,http://3g.sina.com.cn/3g/book/",
-		"bbs,ÂÛÌ³,ÂÛÌ³,http://3g.sina.com.cn/3g/bbs/",
-		"astro,ĞÇ×ù,ĞÇ×ù,http://3g.sina.com.cn/3g/ast/",
-		"joke,Ğ¦»°,Ğ¦»°,http://3g.sina.com.cn/3g/joke/",
-		"house,·¿²ú,·¿²ú,http://3g.sina.com.cn/3g/house/",
-		"jczs,¾üÊÂ,¾üÊÂ,http://3g.sina.com.cn/3g/jczs/",
-		"blog,²©¿Í,²©¿Í,http://3g.sina.com.cn/3g/blog/",
-		"blog,ĞÂÎÅÅÅĞĞ,ĞÂÎÅÅÅĞĞ,http://3g.sina.com.cn/3g/site/proc/hotnews/daily_index.wml",
-		"eladies,Å®ĞÔ,Å®ĞÔ,http://3g.sina.com.cn/3g/eladies/",
-		"gd,¹ã¶«ĞÂÎÅ,¹ã¶«ĞÂÎÅ,http://3g.sina.com.cn/3g/news/index.php?ptype=0&pid=17&did=10&cid=396&wid=11&tid=110&vid=88",
-		"scroll,¹ö¶¯ĞÂÎÅ,¹ö¶¯ĞÂÎÅ,http://3g.sina.com.cn/3g/news/index.php?did=1&tid=110&vid=414&pos=1",
-		"pro,°ÙÊÂÍ¨,°ÙÊÂÍ¨,http://3g.sina.com.cn/3g/pro/index.php?tid=254&did=612&vid=84",
-		"pro,ÌìÆø,ÌìÆø,http://3g.sina.com.cn/prog/wapsite/weather_new/index.php",
-		"pro,ÏÂÔØ,ÏÂÔØ,http://3g.sina.com.cn/prog/wapsite/fd/index.php",
-		"pro,ËÑË÷,ËÑË÷,http://3g.sina.com.cn/iask/?p=3g",
-		"pro,Èí¼ş,Èí¼ş,http://3g.sina.com.cn/3g/soft/",
-		"pro,ÓÎÏ·,ÓÎÏ·,http://3g.sina.com.cn/3g/game/",
-		"pro,½­ºş,½­ºş,http://3g.sina.com.cn/community/prog/home/ind.php?to=home",
-		"pro,½­ºş,½­ºş,http://3g.sina.com.cn/community/prog/home/ind.php?to=home&from=4",
-		"pro,°ÂÔË,°ÂÔË,http://3g.sina.com.cn/3g/2008/",
-		"pro,½ğÅÆ,½ğÅÆ,http://3g.sina.com.cn/3g/2008/index.php?tid=514&did=122261&vid=84",
-		"pro,Èü³Ì,Èü³Ì,http://3g.sina.com.cn/2008/match/si.php&vt=1",
-		"pro,Ö±²¥,Ö±²¥,http://3g.sina.com.cn/prog/wapsite/live/live_list.php?type=25",
-		"pro,»ı·Ö,»ı·Ö,http://3g.sina.com.cn/community/prog/home/ind.php?to=score",
-		"pro,½¡¿µ,½¡¿µ,http://3g.sina.com.cn/3g/news/index.php?tid=141&did=53&vid=68",
-		"pro,±ÚÖ½,±ÚÖ½,http://wap.sina.com.cn/cms/demo.php?pid=7396&from=301000&app=1",
-		"pro,ÁåÉù,ÁåÉù,http://wap.sina.com.cn/cms/demo.php?pid=7381&from=301000&app=1",
-		"edu,½ÌÓı,½ÌÓı,http://3g.sina.com.cn/3g/edu/",
-		"finance,½ğÈÚÎ£»ú,½ğÈÚÎ£»ú,http://3g.sina.com.cn/3g/finance/index.php?tid=72&did=565&vid=37",
-		"finance,»·Çò¹ÉÖ¸,»·Çò¹ÉÖ¸,http://3g.sina.com.cn/prog/wapsite/stock/shareindex.php",
-		"finance,¹ÉÊĞ¹ö¶¯ÒªÎÅ,¹ÉÊĞ¹ö¶¯ÒªÎÅ,http://3g.sina.com.cn/3g/finance/index.php?did=13&tid=60&vid=419",
-	);	
-	foreach my $line (@word_tmp)
-	{
-		my (undef,undef,$name,$url) = split(/,/,$line);
-		$url =~ s/\r//g;
-		$url =~ s/http\:\/\/(([^\/]*))//g;
-		my $surl = $1;
-		my $sdomain = $2;
-		if(defined $SHORT_DOMAIN_TO_LONG{$sdomain} && $url !~ /^\/3g*/)
-		{
-			$url = $sdomain.$url;
-			$surl = "";
-		}
-		if($url =~ m/\/[^\?\&\/]*$/){$url .='?pos=49';}
-		else{$url .='&pos=49';}
-
-    $URL_TITLE{$url}{'t'} = $name;
-    $URL_TITLE{$url}{'n'} = $SUB_ISDN{$url};
-    $URL_TITLE{$url}{'c'} = $channel;
-	$URL_TITLE{$url}{'u'} = $surl;
-
-#		$url_num{$url}{'t'} = $name;
-#		$url_num{$url}{'n'} = $SUB_ISDN{$url};
-	}
-	
-
-}
-
-
-
-	message("ÆµµÀÊ×Ò³Èë¿â´¦Àí");
-	my $db = new db('wap_master');
-	my $conn = $db->{'conn'};
-	my ($sql,$stmt);
-	my $visit_day = $HALF_HOUR_YEAR.'-'.$HALF_HOUR_MON.'-'.$HALF_HOUR_DAY;
-	my $visit_hour = $HALF_HOUR_HOUR.':00';
-	my $tenDaysAgo = dateConv($GDATE,-31,'yyyy-mm-dd');
-
-	my $name_string;
-	my $tk = 0;
-	foreach my $name (values %pos2domains) 
-	{
-		if($tk == 0){$tk =1; $name_string .= " '$name' ";}
-		else{$name_string .= ", '$name' ";}
-	}
-	$conn->do("set names 'latin1'");
-
-	$conn->do("delete from CHANNEL_HOUR_PV where visit_day = '".$tenDaysAgo."' and source='$source'");
-	print "delete1\n";
-	$conn->do("delete from CHANNEL_HOUR_PV where visit_day='$visit_day' and visit_hour='$visit_hour' and channel in ($name_string ) and source='$source'");
-	print "delete2\n";
-	foreach  my $url (keys %URL_TITLE)
-	{
-		my $title = $URL_TITLE{$url}{'t'};
-		my $pv = $URL_TITLE{$url}{'n'};
-		my $channel = $URL_TITLE{$url}{'c'};
-		next if($pv eq undef);
-		next if($title eq undef);
-		$channel =~ s/¹ö¶¯//;
-		#$url = '3g.sina.com.cn'.$url;
-		$url = $URL_TITLE{$url}{'u'}.$url;
-		print "[$pv]-$title-$url-$channel\n";
-		$conn->do("insert into CHANNEL_HOUR_PV set visit_day='$visit_day',visit_hour='$visit_hour',url='$url',channel='$channel',pv=$pv,title='$title',source='$source'");
-
-	}
-	my $sql_complete = "replace RSS_HALF_HOUR_PROG_STATUS set time = '$visit_day $visit_hour',table_name = 'CHANNEL_HOUR_PV',ip = '221.179.175.133';";
-	$conn->do($sql_complete);
-
-	$conn->disconnect;
-
-}
-
-
-print `free -m`;
-undef %SUB_ISDN;
-print `free -m`;
-
-message("ÈÎÎñµã»÷Á¿·ÖÎö");
-{
-	my %ALL_JOBS=();
-	my %allR=();
-	my %result=();
-		
-	my $db_slave = new db('wap_slave');
-	my $conn_slave = $db_slave->{'conn'};
-	
-	my $sql="select id,host,type,url,rs_unit,require_type,begin_time,end_time from RSS_SELF_ISDN_JOBS where status =1 and rs_unit=0";
-	my $stmt=$conn_slave->prepare($sql);
-	$stmt->execute() or print "ERROR: $DBI::errstr\n";
-	while( my ($id,$host,$type,$url,$rs_unit,$require_type,$begin_time,$end_time)=$stmt->fetchrow_array)
-	{
-		next if ($rs_unit eq "1");#Èç¹ûÍ³¼Æµ¥Î»ÊÇÌìÔò²»ÔÚ´Ë´¦Í³¼Æ
-		if ($require_type eq "1")
-		{#Èç¹ûÍ³¼ÆĞèÇóµÄÀàĞÍÊÇÊ±¼ä¶Î			
-			my $now=getToday('yyyy-mm-dd');
-			if (($begin_time le $now ) && ($now le $end_time))
-			{	}
-			else
-			{
-				next;
-			}
-		}
-		#¾«È·²»¼Ó¿Õ¸ñ
-		if($type==2)
-		{
-			$url =~ s/\`/\.*/g;	
-			$url =~ s/\?/\\\?/g;	
-		}
-		$ALL_JOBS{$host}{"$id,$type"}=$url;
-		#print "ĞèÒªÍ³¼Æ$host $id $type \n";
-		$allR{$id}=$url;	
-	}
-	$stmt->finish;
-	$conn_slave->disconnect;
-
-#print Dumper(\%ALL_ISDN);
-#print "==========ÉÏ ALL_ISDN===========ÏÂ ALL_JOBS==========\n";
-#print Dumper(\%ALL_JOBS);
-
-	foreach my $host (keys %ALL_JOBS)
-	{
-		foreach my $r_arr_p (@{$ALL_ISDN{$host}})
-		{
-			my ($request,$mobile) = @$r_arr_p;
-			next if (invalidExtname($request) == 1);
-			while(my ($key,$url) = each %{$ALL_JOBS{$host}})
-			{
-#				next if (index($request,$url)<0);#´ø`µÄÄ£ºı»á±»¹ıÂË£¬ËùÒÔÈ¥µôÕâ¾äÅĞ¶Ï
-				my ($id,$type)=split(/,/,$key);
-				#print "¿ªÊ¼Í³¼Æ $host $request,$mobile Í³¼ÆÀàĞÍ $id,$type \n";
-				
-				if ($type==1)
-				{#¾«È·Æ¥Åä
-					if ($request eq $url)
-					{
-						$result{$id}{'pv'}++;
-						if ($mobile ne "-")
-						{
-							$result{$id}{'m'}{$mobile}=1;
-						}
-						else
-						{
-							$result{$id}{'b_pv'}++;
-						}
-					}								
-				}
-				elsif($type==0)
-				{#Ç°×ºÆ¥Åä				
-					if (index($request,$url)==0)
-					{
-						$result{$id}{'pv'}++;
-						if ($mobile ne "-")
-						{
-							$result{$id}{'m'}{$mobile}=1;
-						}
-						else
-						{
-							$result{$id}{'b_pv'}++;
-						}
-					}								
-				}
-				elsif($type==2)
-				{#Ä£ºıÆ¥Åä				
-					if ($request =~ m/$url/)#×îÉÏÃæ¾ÍÒÑ¾­ÅĞ¶Ï$b =~ /$a/
-					{
-						$result{$id}{'pv'}++;
-						if ($mobile ne "-")
-						{
-							$result{$id}{'m'}{$mobile}=1;
-						}
-						else
-						{
-							$result{$id}{'b_pv'}++;
-						}
-					}								
-				}
-				
-			}
-		}			
-	}
-
-foreach my $id(keys %result){print "result $id pv: $result{$id}{'pv'}\n";}
-
-	message("ÈÎÎñÈë¿â´¦Àí");
-	my $db = new db('wap_master');
-	my $conn = $db->{'conn'};
-	my ($sql,$stmt);
-	my $visit_day = $HALF_HOUR_YEAR.'-'.$HALF_HOUR_MON.'-'.$HALF_HOUR_DAY;
-	my $visit_hour = $HALF_HOUR_HOUR.':00';
-	my $i=0;
-	$conn->do("set names 'latin1'");
-
-	foreach my $id (keys %result)
-	{
-		my $pv=isKeyExists($result{$id}{'pv'});
-		my $user=isKeyExists(scalar keys %{$result{$id}{'m'}});
-		my $user_blank=isKeyExists($result{$id}{'b_pv'});
-		print "replace:$id,$pv,$user,$user_blank\n";
-		$sql="replace into RSS_SELF_ISDN_HOUR_STAT 
-					set id='$id',
-						visit_day='$visit_day',
-						visit_hour='$visit_hour',
-						pv='$pv',
-						user='$user',
-						source='$source',
-						user_blank='$user_blank'";
-		$i +=$conn->do($sql);
-	}	
-	print "¹²²åÈë$iÌõ¼ÇÂ¼\n";	
-	$conn->disconnect;
-
-
-
-}
-
-my $endtime=getToday('yyyy-mm-dd hh:mm:ss');
-print "$begintime $endtime \n";
-
-
-exit;
-
-##
-# º¯ÊıÃû³Æ: rsyncLog
-# º¯Êı¹¦ÄÜ£º¶Ô¸ø¶¨Ô´¡¢Ä¿±êµÄÖ÷»ú½øĞĞÈÕÖ¾Í¬²½.
-# ²ÎÊı: Ô¶³ÌÖ÷»úµÄrsyncÄ£¿é¼°ÎÄ¼şÃû£¬±¾»ú¶ÔÓ¦ÎÄ¼şÃû£¬ÈÕÖ¾ÀàĞÍ¡£
-# ·µ»ØÖµ£ºÎŞ
-##
-sub rsyncLog()
-{
-	foreach my $domain_name (keys %RSYNC_CONFIG_LOGFILE)
-	{
-		#next if ($domain_name ne 'news.=3g.sina.com.cn') ;
-		my $remoteFiles_ref	= $RSYNC_CONFIG_LOGFILE{$domain_name}{'remoteFiles'};
-		my $hourFiles_ref=$RSYNC_CONFIG_LOGFILE{$domain_name}{'hourFiles'};
-		foreach my $host (keys %$remoteFiles_ref)
-		{
-			my $localfile = $$hourFiles_ref{$host};
-			my $remotefile = $host . $$remoteFiles_ref{$host};
-			$localfile =~ m/^(.*)\/[^\/]+$/;
-			my $localdir = $1;
-			my $cmd_mkdir = "mkdir -p $localdir";
-			
-			print "´´½¨Ä¿Â¼|".$cmd_mkdir  ."|\n";
-			system("$cmd_mkdir")==0 
-				or warning("´´½¨Ä¿Â¼³ö´í ÈÕÖ¾ÀàĞÍ:$domain_name  $!");
-			
-			my $cmd="$RSYNC $remotefile $localfile";
-			print "Í¬²½ÈÕÖ¾|".$cmd  ."|\n";
-			system("$cmd")==0 
-				or warning("Í¬²½ÈÕÖ¾³ö´í ÈÕÖ¾ÀàĞÍ:$domain_name  $!");
-			my $size = (stat($localfile)) [7];
-			if($size > 419430400) {sendSMS_new("ft ${domain_name}${host}ÈÕÖ¾´óÓÚ400M");}
-			#if($size == 0) {sendSMS_new("ft ${domain_name}${host}ÈÕÖ¾µÈÓÚ0");}
-			
-		}
-	}
-}
-
-
-
-

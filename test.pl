@@ -26,12 +26,22 @@
 #
 #
 #
-@subdomains = qw(wapcms dpool book_pibao_3g_sina_com_cn nba.prog.3g.sina.com.cn nba2.prog.3g.sina.com.cn sinatv.sina.com.cn book.prog.3g.sina.com.cn stock.prog.sina.com.cn );
-foreach my $domain(@subdomains){
-  if($domain eq "dpool"){
-    last;
-  }
-  print $domain . "\n";
+#%subdomains = qw( wapcms dpool book_pibao_3g_sina_com_cn nba.prog.3g.sina.com.cn nba2.prog.3g.sina.com.cn sinatv.sina.com.cn book.prog.3g.sina.com.cn stock.prog.sina.com.cn  );
+@subdomains = qw( wapcms dpool book_pibao_3g_sina_com_cn nba.prog.3g.sina.com.cn nba2.prog.3g.sina.com.cn sinatv.sina.com.cn book.prog.3g.sina.com.cn stock.prog.sina.com.cn  );
+#foreach my $domain(@subdomains){
+#    #if($domain eq "dpool"){
+#    #  last;
+#    #}
+#  print $domain . "\n";
+#}
+if(exists $subdomains{"wapcms"}){
+    print "EXITS";
+}
+
+
+foreach my $mk(@subdomains){
+    next if($mk ne 'dpool');
+    print "\nDOM:" . $mk ."\n";
 }
 
 my $m = 2;
@@ -46,10 +56,10 @@ if($m eq 1){
 print "\nID:$id, Name:$name\n";
 
 
-@fetchrow_array = (('index.3g.sina.com.cn', 'index.3g.sina.com.cn/', '221.179.175.208', 123));
-foreach ($domain, $path, $ip, $xx) = @fetchrow_array){
-  print $domain . $path . $ip . $xx;
-}
+#@fetchrow_array = (('index.3g.sina.com.cn', 'index.3g.sina.com.cn/', '221.179.175.208', 123));
+#foreach ($domain, $path, $ip, $xx) = @fetchrow_array){
+#  print $domain . $path . $ip . $xx;
+#}
 #foreach my $date(@fetchrow_array){
 #  ($domain, $path, $ip, $xx) = $date;
 #  print $domain . $path . $ip . $xx;
@@ -62,3 +72,61 @@ while (my ($channel,$path,$ip,$date) = (@fetchrow_array)){
 
 
 
+
+
+@data = qw(
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+index.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+sports.3g.sina.com.cn-Channel
+);
+%s = ();
+for $k (@data){
+  $s{$k} = 1;
+}
+print %s;
+for $k (keys %s){
+  print "\nKEY:" . $k . "\n";
+}
+@k = keys %s;
+for $m(@k){
+  print "\n---" . $m . "---";
+}
+
+
+
+
+$s = 'alvayang';
+$m = $s =~ m/alva/i ? 'gotcha' : 'not';
+print $m;
