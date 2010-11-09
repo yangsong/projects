@@ -448,10 +448,37 @@ foreach my $cid(keys %video_c)
 		$video_rank{$cid}{$vid}{'title'} = $video{$vid}{'title'};
 	}
 }
+
+#写入各个频道的数据信息
+print "channal information\n";
+$conn_wap->do("delete from video_channel_info where visit_day='$GDATE'");
+foreach my $tid(keys %channels_c){
+		my $sql = "replace into video_channel_info set visit_day = '$GDATE', 
+				tid = '$tid',
+				play_pv = '$channels_c{$tid}{'total'}', 
+				wap_play_pv = '$video_rank{$cid}{$vid}{'wap_play_pv'}', 
+				wifi_play_pv = '$video_rank{$cid}{$vid}{'wifi_play_pv'}',  
+				fsxs_play_pv = '$video_rank{$cid}{$vid}{'fsxs_play_pv'}', 
+				wap_fsxs_play_pv = '$video_rank{$cid}{$vid}{'wap_fsxs_play_pv'}', 
+				wifi_fsxs_play_pv = '$video_rank{$cid}{$vid}{'wifi_fsxs_play_pv'}',  
+				down_pv = '$video_rank{$cid}{$vid}{'down_pv'}', 
+				wap_down_pv = '$video_rank{$cid}{$vid}{'wap_down_pv'}', 
+				wifi_down_pv = '$video_rank{$cid}{$vid}{'wifi_down_pv'}'";
+                if($debug){
+		print $sql, "\n";
+    }
+		$conn_wap->do("$sql");
+}
+
+
 print '%video_rank',"\n";
 #print Dumper(\%video_rank);
 ##delete video_rank
-$conn_wap->do("delete from video_rank where visit_day='$GDATE'");
+$table_name = 'video_rank';
+if($debug){
+$table_name = 'video_rank_test';
+}
+$conn_wap->do("delete from $table_name where visit_day='$GDATE'");
 ##insert video_rank
 foreach my $cid (keys %video_rank)
 {
@@ -471,7 +498,9 @@ foreach my $cid (keys %video_rank)
 				down_pv = '$video_rank{$cid}{$vid}{'down_pv'}', 
 				wap_down_pv = '$video_rank{$cid}{$vid}{'wap_down_pv'}', 
 				wifi_down_pv = '$video_rank{$cid}{$vid}{'wifi_down_pv'}'";
-		#print $sql, "\n";
+                if($debug){
+		print $sql, "\n";
+    }
 		$conn_wap->do("$sql");
 	}
 }
