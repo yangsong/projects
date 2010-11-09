@@ -127,7 +127,7 @@ while (  my ( $request, $processid, $phone, $utype ,$apn,$status) = $stmt->fetch
 			my ($sid) = $url[-1] =~ m/sid=(\d*)/;
 			my ($tid) = $url[-1] =~ m/tid=(\d*)/;
 			my ($did) = $url[-1] =~ m/did=(\d*)/;
-            $channels_c{$tid}++;
+            $channels_c{$tid}{'total'}++;
 			$video{$vid}{'tid'} = $tid;
 			$video{$vid}{'did'} = $did;
 			my ($format) = $filename =~/\.(.*)/;
@@ -142,8 +142,10 @@ while (  my ( $request, $processid, $phone, $utype ,$apn,$status) = $stmt->fetch
 				$video{$vid}{$apn.'_fsxs_play_pv'}++;
 				$video_c{$cid}{$vid}{'fsxs_play_pv'}++;
 				$video_c{$cid}{$vid}{$apn.'_fsxs_play_pv'}++;
+                $channels_c{$tid}{'fsxs_play_pv'}++;
 				if($phone ne '-')
 				{
+                    $channels_c{$tid}{'fsxs_play_valid_pv'}++;
 					$consult{$cid}{'fsxs_play_valid_pv'}++;
 					$consult{$cid}{'fsxs_play_valid_uv'}{$phone} = 1;
 					$consult{$total_cid}{'fsxs_play_valid_pv'}++;
@@ -172,8 +174,10 @@ while (  my ( $request, $processid, $phone, $utype ,$apn,$status) = $stmt->fetch
 				$video{$vid}{$apn.'_down_pv'}++;
 				$video_c{$cid}{$vid}{'down_pv'}++;
 				$video_c{$cid}{$vid}{$apn.'_down_pv'}++;
+                $channels_c{$tid}{'down_pv'}++;
 				if($phone ne '-')
 				{
+                    $channels_c{$tid}{'down_valid_pv'}++;
 					$consult{$cid}{'down_valid_pv'}++;
 					$consult{$cid}{'down_valid_uv'}{$phone} = 1;
 					$consult{$cid}{'valid_pv'}++;
