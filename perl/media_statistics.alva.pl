@@ -58,6 +58,7 @@ my %video = ();  #单个视频的量：播放、下载、播放请求
 my @vids = ();   #视频id
 my %video_c = ();
 my %channels_c = (); #频道下的统计
+my $client_c = 0;
 
 print "读库统计 begin ====",`date`;
 my $db_RAWLOG = new db('RAWLOG_SLAVE');
@@ -74,6 +75,9 @@ while (  my ( $request, $processid, $phone, $utype ,$apn,$status) = $stmt->fetch
 	if ( $utype ne 'mobile' && $utype ne 'gsid' && $utype ne 'sm' ) {
 		$phone = '-';
 	}
+    if($request =~ /source=iphonev/){
+        $client_c++;
+    }
 	my @fun_startbyte = $processid =~ m/bytes\s{0,1}=\s{0,1}(\d+)-/;
 	if ( $fun_startbyte[0] eq '0' || $processid eq '-' ){#针对.fun根据第一段流来统计
 		#文件名
@@ -246,7 +250,7 @@ my $db_wap   = new db('wap_slave');
 my $conn_wap = $db_wap->{'conn'};
 $conn_wap->do("set names latin1");
 ##delete video_consult
-    my $tablename = 'video_consult';
+my $table_name = 'video_consult';
 if(!$debug){
  $table_name = 'video_consult_test';
 }
@@ -467,6 +471,18 @@ foreach my $tid(keys %channels_c){
 		$conn_wap->do("$sql");
 }
 
+# 写入客户端信息
+print "channal information\n";
+$conn_wap->do("delete from video_client_info where visit_day='$GDATE'");
+foreach my $tid(keys %channels_c){
+    my $sql = "replace into video_client_info set visit_day = '$GDATE', 
+    clients = '$client_c'
+    ";
+    if($debug){
+        print $sql, "\n";
+    }
+    $conn_wap->do("$sql");
+}
 
 print '%video_rank',"\n";
 #print Dumper(\%video_rank);
