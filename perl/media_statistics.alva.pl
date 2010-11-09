@@ -57,6 +57,7 @@ my %subject = ();#专题量：播放请求、下载、用户数
 my %video = ();  #单个视频的量：播放、下载、播放请求
 my @vids = ();   #视频id
 my %video_c = ();
+my %channels_c = (); #频道下的统计
 
 print "读库统计 begin ====",`date`;
 my $db_RAWLOG = new db('RAWLOG_SLAVE');
@@ -126,6 +127,7 @@ while (  my ( $request, $processid, $phone, $utype ,$apn,$status) = $stmt->fetch
 			my ($sid) = $url[-1] =~ m/sid=(\d*)/;
 			my ($tid) = $url[-1] =~ m/tid=(\d*)/;
 			my ($did) = $url[-1] =~ m/did=(\d*)/;
+            $channels_c{$tid}++;
 			$video{$vid}{'tid'} = $tid;
 			$video{$vid}{'did'} = $did;
 			my ($format) = $filename =~/\.(.*)/;
@@ -375,7 +377,7 @@ foreach my $vid ( keys %video ) {
 	my $down_valid_uv = scalar keys %{$video{$vid}{'down_valid_uv'}};
 	my $valid_uv = scalar keys %{$video{$vid}{'valid_uv'}};
 	$video{$vid}{'title'} = $titles{$vid};
-	my $sql = "replace into video_detail set visit_day = '$GDATE', 
+	my $sql = "replace into $table_name set visit_day = '$GDATE', 
 			vid = '$vid',
 			tid = '$video{$vid}{'tid'}',
 			did = '$video{$vid}{'did'}',
@@ -396,7 +398,9 @@ foreach my $vid ( keys %video ) {
 			down_valid_pv = '$video{$vid}{'down_valid_pv'}', 
 			down_valid_uv = '$down_valid_uv',
 			valid_uv = '$valid_uv'";
-	#print $sql, "\n";
+            if($debug){
+                print $sql, "\n";
+            }
 	$conn_wap->do("$sql");
 }
 #排行
