@@ -459,8 +459,7 @@ foreach my $tid(keys %channels_c){
     fsxs_play_pv = '$channels_c{$tid}{'fsxs_play_pv'}', 
     down_pv = '$channels_c{$tid}{'down_pv'}', 
     valid_down_pv = '$channels_c{$tid}{'down_pv'}',
-    valid_fsxs_play_pv = '$channels_c{$tid}{'down_pv'}',
-    updatetime= '$channels_c{$tid}{'down_pv'}',
+    valid_fsxs_play_pv = '$channels_c{$tid}{'fsxs_play_valid_pv'}'
     ";
     if($debug){
         print $sql, "\n";
