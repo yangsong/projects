@@ -453,19 +453,17 @@ foreach my $cid(keys %video_c)
 print "channal information\n";
 $conn_wap->do("delete from video_channel_info where visit_day='$GDATE'");
 foreach my $tid(keys %channels_c){
-		my $sql = "replace into video_channel_info set visit_day = '$GDATE', 
-				tid = '$tid',
-				play_pv = '$channels_c{$tid}{'total'}', 
-				wap_play_pv = '$video_rank{$cid}{$vid}{'wap_play_pv'}', 
-				wifi_play_pv = '$video_rank{$cid}{$vid}{'wifi_play_pv'}',  
-				fsxs_play_pv = '$video_rank{$cid}{$vid}{'fsxs_play_pv'}', 
-				wap_fsxs_play_pv = '$video_rank{$cid}{$vid}{'wap_fsxs_play_pv'}', 
-				wifi_fsxs_play_pv = '$video_rank{$cid}{$vid}{'wifi_fsxs_play_pv'}',  
-				down_pv = '$video_rank{$cid}{$vid}{'down_pv'}', 
-				wap_down_pv = '$video_rank{$cid}{$vid}{'wap_down_pv'}', 
-				wifi_down_pv = '$video_rank{$cid}{$vid}{'wifi_down_pv'}'";
-                if($debug){
-		print $sql, "\n";
+    my $sql = "replace into video_channel_info set visit_day = '$GDATE', 
+    tid = '$tid',
+    play_pv = '$channels_c{$tid}{'total'}', 
+    fsxs_play_pv = '$channels_c{$tid}{'fsxs_play_pv'}', 
+    down_pv = '$channels_c{$tid}{'down_pv'}', 
+    valid_down_pv = '$channels_c{$tid}{'down_pv'}',
+    valid_fsxs_play_pv = '$channels_c{$tid}{'down_pv'}',
+    updatetime= '$channels_c{$tid}{'down_pv'}',
+    ";
+    if($debug){
+        print $sql, "\n";
     }
 		$conn_wap->do("$sql");
 }
