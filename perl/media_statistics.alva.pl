@@ -362,12 +362,12 @@ foreach my $sid ( keys %subject ) {
 ##delete video_detail
 $table_name = 'video_detail';
 if($debug){
-$table_name = 'video_detail_test';
+    $table_name = 'video_detail_test';
 }
-$conn_wap->do("delete from video_detail where visit_day='$GDATE'");
+$conn_wap->do("delete from $table_name where visit_day='$GDATE'");
 #delete x-days ago
 my $x_days_ago = getNDaysAgo('yyyy-mm-dd',10);
-$conn_wap->do("delete from video_detail where visit_day<'$x_days_ago'");
+$conn_wap->do("delete from $table_name where visit_day<'$x_days_ago'");
 ##insert video_detail
 foreach my $vid ( keys %video ) {
 	my $play_valid_uv = scalar keys %{$video{$vid}{'play_valid_uv'}};
